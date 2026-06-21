@@ -19,7 +19,7 @@
 // are symmetric about the pocket axis, so the mirrored case still fits; the
 // power switch flips orientation but its body centre and actuator height are
 // unchanged, so the mirrored wall slot lines up.
-right = false;   // build the right-half case (mirror of the left)
+right = true;   // build the right-half case (mirror of the left)
 
 gap    = 0.15;   // PCB-to-inner-wall clearance (per side)
 wall   = 2.0;    // case wall thickness
@@ -122,7 +122,7 @@ bolts = [
     [137,  78],   // BR — between thumb 14 pad and right case wall, biased right
 ];
 m2_head_d  = 4.5;  // socket cap head pocket dia (3.8mm head + 0.7 clearance)
-m2_head_h  = 2.0;  // head pocket depth = head height -> head top flush w/ deck
+m2_head_h  = 3.3;  // head pocket depth — recessed 1.3mm below deck; M2×12 tip flush with floor_t=2.8 bottom
 m2_shaft_d = 2.2;  // bolt shaft clearance hole
 arc_n  = 64;     // points sampled per arc corner
 $fn = 128;
