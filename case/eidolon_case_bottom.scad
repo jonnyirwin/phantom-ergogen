@@ -11,6 +11,7 @@
 //   z ∈ [0, lip_h]    : nesting lip, outer = outline + gap - fit_clr, slips
 //                       into the top case cavity from below.
 //   lip_h = plate_bot - pcb_t = 2.10mm  (PCB underside rest plane).
+//   floor_t = 2.8mm → 1.0mm wall above nut pocket (m2_nut_h = 1.8mm).
 // Cutouts:
 //   - Kailh PG1350 hot-swap socket pockets at each switch — TOTEM silkscreen
 //     outline (Z-shape, two bulges). The pockets cut all the way through the
@@ -25,7 +26,7 @@ include <eidolon_case.scad>;
 
 // === bottom-shell dimensions ===
 pcb_t           = 1.6;                 // PCB thickness
-floor_t         = 2.0;                 // exterior plate below z=0 (2mm min wall)
+floor_t         = 2.8;                 // exterior plate below z=0
 lip_h           = plate_bot - pcb_t;   // 2.10mm — nesting lip top = PCB underside
 fit_clr         = 0.1;                 // lip-to-top-case-cavity slip clearance
 
@@ -93,6 +94,22 @@ module bolt_shafts()
             linear_extrude(lip_h + floor_t + 2)
                 circle(d = m2_shaft_d, $fn = 96);
 
+// Bumpon (rubber foot) pockets — 8.4mm dia, 2mm deep, on the bottom face.
+bumpon_d     = 8.4;
+bumpon_depth = 2.0;
+bumpons = [
+    [141,  38],   // upper-right — MCU corner
+    [125,  91],   // lower-right — thumb cluster corner
+    [ 50,  28],   // upper-left  — 7.7mm from TL bolt, 9.5mm from top wall
+    [ 52,  84],   // lower-left  — 7.5mm from BL bolt, 15mm from left wall
+];
+
+module bumpon_pockets()
+    for (b = bumpons)
+        translate([b[0], b[1], -floor_t - 0.01])
+            linear_extrude(bumpon_depth + 0.01)
+                circle(d = bumpon_d, $fn = 96);
+
 module bottom_case()
     mirror([0, 1, 0])
         difference() {
@@ -100,6 +117,7 @@ module bottom_case()
             socket_pockets();
             nut_pockets();
             bolt_shafts();
+            bumpon_pockets();
         }
 
 // Preview: render top + bottom together for fit check. EXPLODED > 0 lifts the
