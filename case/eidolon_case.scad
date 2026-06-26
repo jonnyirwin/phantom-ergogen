@@ -54,9 +54,9 @@ plate_bot = plate_top - plate_t13 - plate_t16; // plate underside (3.70)
 // outer wall is flattened by a rounded-rectangular recess, and the USB-C socket
 // cutout pierces that flat into the pocket. The PCB right edge is grown by
 // pcb_pad (see outline) so the pocket has board under it + real walls.
-xiao_l   = 20.0;            // board length (long axis, vertical / y)
-xiao_w   = 17.5;           // board width (x)
-xiao_clr = 0.4;            // clearance per side inside the pocket
+xiao_l   = 21.0;           // board length (long axis, vertical / y) — footprint outline
+xiao_w   = 17.8;           // board width (x) — footprint outline
+xiao_clr = 0.6;            // clearance per side inside the pocket
 xiao_pos = [137.0, 44.0];  // pocket center, KiCad coords — up near the top angle
 xiao_rot = 0;              // deg; 0 = level with the right edge
 // USB-C side: a rounded-rect recess cut into the top-right wall makes a flat
@@ -65,8 +65,8 @@ flat_w   = 14.0;           // flat recess width  (x)
 flat_h   = 9.0;            // flat recess height (z)
 flat_r   = 2.0;            // flat recess corner radius
 usb_wall = 2.0;            // wall left between the flat face and the pocket
-usb_w    = 9.0;            // USB-C cutout width
-usb_h    = 4.0;            // USB-C cutout height (3.2 socket + 0.8 clearance)
+usb_w    = 10.5;           // USB-C cutout width  (+1.5 from 9.0)
+usb_h    = 5.5;            // USB-C cutout height (+1.5 from 4.0); lip below = 1.75mm
 // SMD-mounted XIAO (castellated on PCB top): XIAO board sits on plate_bot with
 // its own 1.0mm thickness, then the USB-C connector body extends ~3.16mm above
 // that. Connector top is at plate_bot + 1.0 + 3.16 = plate_bot + 4.16. Place
@@ -108,9 +108,21 @@ bat_depth  = 3.5;            // cell + 0.5 clearance above plate_bot
 // actuator/slider; sized for 1.5mm slider travel + clearance.
 sw_pos   = [145.5, 60.27]; // switch centre, KiCad — matches ergogen power placement
 sw_z     = plate_bot + 1.5;// slot vertical centre = actuator height above the PCB
-sw_slot_w = 8.0;           // slot width  (y, along slider travel + cap)
-sw_slot_h = 4.0;           // slot height (z)
+// The switch body is just over 9mm wide along the wall and overhangs the PCB edge
+// by 0.5mm, so the slot must clear the full body width — wider than the gap to the
+// XIAO cavity. The pocket therefore MERGES into the XIAO cavity (no dividing wall).
+// The body sits at z = [plate_bot, ~plate_bot+4], below the acrylic rebate, so the
+// cover's top retention lip is preserved.
+sw_slot_w = 8.0;           // visible actuator slot width (y) — rounded, original size
+sw_slot_h = 4.0;           // slot height (z) — original; the side hole itself was fine
 sw_slot_inward = 5.0;      // how much the slot extends into the case body (-x)
+// The switch body is just over 9mm wide and overhangs the PCB edge ~0.5mm. It's
+// cleared by a separate INTERNAL body pocket (power_body_pocket) that stays inboard
+// of the outer wall — so the visible slot keeps its rounded look — and whose flat
+// -y edge overlaps the XIAO cavity so the two voids merge without a coincident fin.
+sw_body_w = 11.0;          // body 9.2 + clearance; flat -y edge (54.77) overlaps the
+                           // XIAO cavity edge (55.1) by ~0.33mm at every z
+sw_body_h = 4.5;           // body height above the PCB top
 // M2 socket-cap case bolts at 4 corners (KiCad coords). Head sinks into a
 // pocket on the deck top; shaft passes through PCB and into a hex-nut pocket
 // in the bottom shell. Positions chosen to clear all switches, the MCU pocket,
@@ -122,10 +134,10 @@ bolts = [
     [137,  78],   // BR — between thumb 14 pad and right case wall, biased right
 ];
 m2_head_d  = 4.5;  // socket cap head pocket dia (3.8mm head + 0.7 clearance)
-m2_head_h  = 3.3;  // head pocket depth — recessed 1.3mm below deck; M2×12 tip flush with floor_t=2.8 bottom
+m2_head_h  = 2.0;  // head pocket depth = head height -> head top flush w/ deck
 m2_shaft_d = 2.2;  // bolt shaft clearance hole
-arc_n  = 64;     // points sampled per arc corner
-$fn = 128;
+arc_n  = 128;    // points sampled per arc corner
+$fn = 256;
 
 // ---- Edge.Cuts vertices (exact KiCad coords, mm, y-down) ----
 P1  = [ 39.624000, 16.718000];  // -0.3mm top-edge relief (routing lanes; matches both PCBs)
@@ -358,18 +370,30 @@ module battery_pocket()
             linear_extrude(bat_depth + 0.5)
                 square([bat_x, bat_y], center = true);
 
-// Power-switch actuator slot: rectangular hole pierced through the right wall
-// at sw_pos and actuator z, generous in y for the slider's travel. Also
-// extended sw_slot_inward into the case body (-x) to make room for the switch
-// body to sit when the PCB is seated.
+// Power-switch actuator slot: rounded rectangular hole pierced through the right
+// wall at sw_pos and actuator z, sized for the slider. This is the VISIBLE slot, so
+// it keeps its rounded corners. Body clearance is handled by power_body_pocket().
 module power_slot() {
     length = 10 + sw_slot_inward;
-    r = 1.5;  // corner radius (<= sw_slot_h/2 = 2)
+    r = 1.5;  // corner radius (<= sw_slot_h/2 = 2.5)
     translate([sw_pos[0] - sw_slot_inward, sw_pos[1], sw_z])
         rotate([0, 90, 0])
             linear_extrude(length)
                 offset(r = r)
                     square([sw_slot_h - 2*r, sw_slot_w - 2*r], center = true);
+}
+
+// Internal switch-body pocket: a clean rectangle sized for the full body. It runs
+// from inboard of the PCB out to just inside the outer wall (x1 < outer face ~149.4)
+// so it never breaks the visible rounded slot, and its flat -y edge (54.77) overlaps
+// the XIAO cavity edge (55.1) at every z — merging the two voids cleanly (no fin).
+module power_body_pocket() {
+    x0 = sw_pos[0] - sw_slot_inward;   // 140.5 — inner end
+    x1 = sw_pos[0] + 2.5;              // 148.0 — into the wall, short of the outer face
+    z0 = plate_bot - 0.5;              // overlap the cavity below
+    z1 = plate_bot + sw_body_h;
+    translate([(x0 + x1)/2, sw_pos[1], (z0 + z1)/2])
+        cube([x1 - x0, sw_body_w, z1 - z0], center = true);
 }
 
 // Recess = union of every keycap pad (the field-following shape) + the extended
@@ -424,6 +448,7 @@ module top_case()
             usb_port();
             battery_pocket();
             power_slot();
+            power_body_pocket();
             bolt_holes();
         }
 

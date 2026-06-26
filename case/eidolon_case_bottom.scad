@@ -11,7 +11,6 @@
 //   z ∈ [0, lip_h]    : nesting lip, outer = outline + gap - fit_clr, slips
 //                       into the top case cavity from below.
 //   lip_h = plate_bot - pcb_t = 2.10mm  (PCB underside rest plane).
-//   floor_t = 2.8mm → 1.0mm wall above nut pocket (m2_nut_h = 1.8mm).
 // Cutouts:
 //   - Kailh PG1350 hot-swap socket pockets at each switch — TOTEM silkscreen
 //     outline (Z-shape, two bulges). The pockets cut all the way through the
@@ -26,7 +25,7 @@ include <eidolon_case.scad>;
 
 // === bottom-shell dimensions ===
 pcb_t           = 1.6;                 // PCB thickness
-floor_t         = 2.8;                 // exterior plate below z=0
+floor_t         = 2.0;                 // exterior plate below z=0 (2mm min wall)
 lip_h           = plate_bot - pcb_t;   // 2.10mm — nesting lip top = PCB underside
 fit_clr         = 0.1;                 // lip-to-top-case-cavity slip clearance
 
@@ -46,7 +45,7 @@ socket_outline = [
     [ 2.0607, -3.2607],                     // arc midpoint (upper inner corner)
     [ 1.0,    -3.7  ], [-1.5,    -3.7  ]
 ];
-socket_clr = 0.3;  // inflate the outline by this much for socket plastic slop
+socket_clr = 0.6;  // inflate the outline by this much for socket plastic+metal slop
 
 // M2 hex nut: 4.0mm across flats. Hex circumradius = 4/√3 ≈ 2.31, plus slack.
 m2_nut_af = 4.0;
@@ -61,24 +60,67 @@ module bottom_body()
             offset(r = gap - fit_clr) polygon(outline);
     }
 
-// Hot-swap socket pockets — through-cut the full lip height so a 1.8mm-tall
-// socket fits. The exterior floor seals the cuts from outside; the socket
-// bottom ends ~0.3mm above the floor top (z=0). Rotated per switch.
-// The hotswap sockets do NOT mirror on the right-half PCB (they keep their
-// orientation; verified: right S3 drill at centre +5, pad 2 at centre +8.275,
-// same as left). The Z-shaped pocket is chiral, so for the right build the
-// polygon is mirrored LOCALLY — the global mirror([1,0,0]) then cancels it,
-// leaving the pocket in the same chirality as the physical socket.
+// === clearance pockets cut into the lip (z = 0 .. lip_h) ===
+// All of the below pierce the full lip height so parts protruding below the PCB
+// fit; the exterior floor seals the cuts from outside. Straight (no chamfer) —
+// the fit is set by clearance alone.
+
+// Hot-swap socket pocket footprint: the hand-traced plastic body PLUS the two
+// metal SMD solder tabs (2.6mm sq at the pad centres), which overhang the plastic
+// by ~2.6mm at each end and previously had no clearance. socket_clr inflates it.
+// The sockets do NOT mirror on the right-half PCB, but the footprint is chiral, so
+// for the right build the profile is mirrored LOCALLY and the global mirror([1,0,0])
+// cancels it — leaving the pocket in the physical socket's chirality.
+sock_pad_d = 2.6;
+sock_pads  = [[-3.275, -5.95], [8.275, -3.75]];
+module socket_full() {
+    polygon(socket_outline);
+    for (p = sock_pads) translate(p) square(sock_pad_d, center = true);
+}
+module socket_2d() {
+    if (right) mirror([1, 0]) offset(r = socket_clr) socket_full();
+    else                      offset(r = socket_clr) socket_full();
+}
 module socket_pockets()
     for (s = switches)
         translate([s[0], s[1], 0])
             rotate([0, 0, -s[2]])
-                linear_extrude(lip_h + 0.01)
-                    if (right)
-                        mirror([1, 0])
-                            offset(r = socket_clr) polygon(socket_outline);
-                    else
-                        offset(r = socket_clr) polygon(socket_outline);
+                linear_extrude(lip_h + 0.02) socket_2d();
+
+// Choc v1 plastic protrusions poking below the PCB: central pole + two locating
+// legs, on the switch y=0 axis. (The electrical pin holes sit inside the socket
+// pocket already, so only these three plastic features need clearing.)
+pole_d = 4.0;   // central pole Ø3.429 + clearance
+leg_d  = 2.4;   // locating legs Ø1.702 + clearance
+module switch_pins_2d() {
+    circle(d = pole_d, $fn = 64);
+    translate([ 5.5, 0]) circle(d = leg_d, $fn = 48);
+    translate([-5.5, 0]) circle(d = leg_d, $fn = 48);
+}
+module switch_pin_pockets()
+    for (s = switches)
+        translate([s[0], s[1], 0])
+            rotate([0, 0, -s[2]])
+                linear_extrude(lip_h + 0.02) switch_pins_2d();
+
+// MSK-12D19 trimmed-leg clearance: the 3 through-hole legs (2.5mm pitch along y)
+// protrude below the PCB into the lip. Rounded slot at sw_pos; the global mirror
+// handles the right build, as with power_slot().
+module power_legs_2d()
+    offset(r = 1.0) square([0.5, 5.5], center = true);   // -> 2.5 x 7.5 rounded
+module power_leg_pockets()
+    translate([sw_pos[0], sw_pos[1], 0])
+        linear_extrude(lip_h + 0.02) power_legs_2d();
+
+// XIAO underside solder-joint clearance: shallow recess in the lip top under the
+// XIAO so the castellation fillets and the BAT/GND access-hole joints (soldered up
+// through the PCB) don't bear on the solid lip. Leaves ~0.9mm of lip below.
+xiao_uj_depth = 1.2;
+module xiao_underside_pocket()
+    translate([xiao_pos[0], xiao_pos[1], lip_h - xiao_uj_depth])
+        rotate([0, 0, -xiao_rot])
+            linear_extrude(xiao_uj_depth + 0.02)
+                square([xiao_w + 1, xiao_l + 1], center = true);
 
 // Hex nut pockets in the bottom face (z = -floor_t), m2_nut_h deep upward.
 module nut_pockets()
@@ -94,9 +136,10 @@ module bolt_shafts()
             linear_extrude(lip_h + floor_t + 2)
                 circle(d = m2_shaft_d, $fn = 96);
 
-// Bumpon (rubber foot) pockets — 8.4mm dia, 2mm deep, on the bottom face.
+// Bumpon (rubber foot) pockets — 8.4mm dia, on the bottom face.
+// Same depth as the nut pockets (m2_nut_h), leaving 0.2mm of floor below.
 bumpon_d     = 8.4;
-bumpon_depth = 2.0;
+bumpon_depth = m2_nut_h;
 bumpons = [
     [141,  38],   // upper-right — MCU corner
     [125,  91],   // lower-right — thumb cluster corner
@@ -115,6 +158,9 @@ module bottom_case()
         difference() {
             bottom_body();
             socket_pockets();
+            switch_pin_pockets();
+            power_leg_pockets();
+            xiao_underside_pocket();
             nut_pockets();
             bolt_shafts();
             bumpon_pockets();
