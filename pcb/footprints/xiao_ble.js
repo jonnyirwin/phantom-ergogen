@@ -18,7 +18,11 @@
 //
 // Net mapping (face-up XIAO, USB at local -y):
 //   left col  (x = -7.62), -y -> +y:  D0 D1 D2 D3 D4 D5 D6
-//   right col (x = +7.62), -y -> +y:  D7 D8 D9 D10 3V3 GND 5V
+//   right col (x = +7.62), -y -> +y:  5V GND 3V3 D10 D9 D8 D7
+// The power pins (5V/GND/3V3) cluster at the USB end (-y); D7 is the far-corner
+// pin, adjacent to D6 across the bottom edge. (An earlier revision had this
+// column reversed -- D7 at the USB end, 5V at the far end -- which put VBUS on a
+// matrix row and 5V/GND onto GPIOs. Fixed.)
 module.exports = {
   params: {
     designator: 'MCU',
@@ -66,14 +70,14 @@ module.exports = {
       ${cast('5',  -7.62,  2.54, p.D4)}
       ${cast('6',  -7.62,  5.08, p.D5)}
       ${cast('7',  -7.62,  7.62, p.D6)}
-      ${'' /* right col (x = +7.62): D7..D10, 3V3, GND, 5V, USB end (-y) -> far end (+y) */}
-      ${cast('14',  7.62, -7.62, p.D7)}
-      ${cast('13',  7.62, -5.08, p.D8)}
-      ${cast('12',  7.62, -2.54, p.D9)}
+      ${'' /* right col (x = +7.62), USB end (-y) -> far end (+y): 5V GND 3V3 D10 D9 D8 D7 */}
+      ${cast('14',  7.62, -7.62, p.P5V)}
+      ${cast('13',  7.62, -5.08, p.GND)}
+      ${cast('12',  7.62, -2.54, p.P3V3)}
       ${cast('11',  7.62,  0,    p.D10)}
-      ${cast('10',  7.62,  2.54, p.P3V3)}
-      ${cast('9',   7.62,  5.08, p.GND)}
-      ${cast('8',   7.62,  7.62, p.P5V)}
+      ${cast('10',  7.62,  2.54, p.D9)}
+      ${cast('9',   7.62,  5.08, p.D8)}
+      ${cast('8',   7.62,  7.62, p.D7)}
       ${'' /* SWD debug group on the XIAO underside near the USB end
             (SWDIO/SWCLK/RESET/GND). Left UNCONNECTED -- access holes only, not
             wired into the keyboard. NOTE: these are NOT battery pads. */}
