@@ -15,8 +15,8 @@ A small column-staggered wireless split keyboard. 30 keys (5×3 + 2 thumb per ha
 | Keyboard | Role in this project |
 |----------|----------------------|
 | [**Phantom**](https://github.com/davidphilipbarr/Phantom) by davidphilipbarr | PCB layout source — key positions reverse-engineered from `lephantom.kicad_pcb`; board outline traced from the original `Edge.Cuts`. Eidolon matches the original key centres to < 0.15 mm. |
-| [**TOTEM**](https://github.com/GEIGEIGEIST/TOTEM) by GEIGEIGEIST | Case design reference — switch hole dimensions, keycap recess depth, clamshell geometry, and hot-swap socket pocket profiles all taken from the Totem STEP file. |
-| [**Rufous**](https://github.com/jcmkk3/trochilidae/) by jcmkk3 | XIAO BLE footprint and diode placement — `pcb/footprints/xiao_pogo.js` is adapted from the Rufous design; diodes in the Choc south LED cutout follow the same approach. |
+| [**TOTEM**](https://github.com/GEIGEIGEIST/TOTEM) by GEIGEIGEIST | Case design reference — switch hole dimensions, keycap recess depth, clamshell geometry, and hot-swap socket pocket profiles from the Totem STEP file; the XIAO BLE SMD footprint (`pcb/footprints/xiao_ble.js`) is adapted from Totem's `xiao-ble-smd-cutout`. |
+| [**Rufous**](https://github.com/jcmkk3/trochilidae/) by jcmkk3 | Diode placement — diodes sit in each Choc south LED cutout following the Rufous approach. (`pcb/footprints/xiao_pogo.js`, a pogo-pin XIAO mount adapted from Rufous, is kept as an unused alternative to the SMD footprint.) |
 
 ## PCB
 
@@ -86,27 +86,29 @@ Pinky splayed 5°, ring splayed 3°; other columns straight. Choc spacing: 18 mm
 
 ### Wiring — COL2ROW diode matrix (XIAO BLE)
 
-Each half is a fully independent wireless unit (own XIAO + battery, no TRRS).
+Each half is a fully independent wireless unit (own XIAO + battery, no TRRS), so the two halves carry **independent pin maps**. The columns are identical; the rows are assigned per half to keep each MCU's fan-out clean.
 
-| Matrix | Net | XIAO pin |
-|--------|-----|----------|
-| pinky col   | C0 | D0 |
-| ring col    | C1 | D1 |
-| middle col  | C2 | D2 |
-| index col   | C3 | D3 |
-| inner col   | C4 | D4 |
-| top row     | R0 | D5 |
-| home row    | R1 | D6 |
-| bottom row  | R2 | D7 |
-| thumb row   | R3 | D8 |
+| Matrix | Net | XIAO pin (left) | XIAO pin (right) |
+|--------|-----|-----------------|------------------|
+| pinky col  | C0 | D0 | D0 |
+| ring col   | C1 | D1 | D1 |
+| middle col | C2 | D2 | D2 |
+| index col  | C3 | D3 | D3 |
+| inner col  | C4 | D4 | D4 |
+| top row    | R0 | D5 | D10 |
+| home row   | R1 | D6 | D9  |
+| bottom row | R2 | D8 | D8  |
+| thumb row  | R3 | D7 | D7  |
+
+On the right half all four rows sit on the matrix-facing `D7`–`D10` edge (`D5`/`D6` spare), so only the five columns cross the MCU — the physical minimum. **The two halves therefore need different `MATRIX_ROW_PINS` in firmware.**
 
 Power: battery + → `RAW_BATT` → slide switch → `BATT` → XIAO `B+`; battery − → GND.
 
-> **Verify before fab:** the XIAO pad→pin mapping in `pcb/footprints/xiao_pogo.js` assumes the standard castellation mounted face-down; confirm against the XIAO datasheet.
+> **Verify before fab:** the XIAO pad→pin mapping lives in `pcb/footprints/xiao_ble.js` (surface-mount, mounted **face-up** over the PCB). It was corrected and checked against the XIAO datasheet and the TOTEM `xiao-ble-smd-cutout` footprint — re-confirm before ordering.
 
 ### Mirrored halves, not reversible
 
-The original Phantom is a single reversible PCB flipped for both hands. Eidolon generates a true left and right board. Functionally identical, but the QMK firmware's `split.matrix_pins.right.direct` should *mirror* the left, not reverse it.
+The original Phantom is a single reversible PCB flipped for both hands. Eidolon generates a true left and right board. Because each half is an independent wireless unit with its own firmware, the halves do **not** share a pin map — the right half's `MATRIX_ROW_PINS` differ from the left's (see the per-half table above).
 
 ---
 
@@ -129,10 +131,12 @@ Top shell features: keycap recess field, stepped 13.8 mm Choc plate holes, XIAO 
 
 `case/eidolon_case_bottom.scad` nests inside the top from below. Geometry:
 
-- z ∈ [−0.9, 0]: exterior plate matching the top case outer footprint
+- z ∈ [−2.0, 0]: exterior plate (`floor_t` = 2.0 mm) matching the top case outer footprint
 - z ∈ [0, 2.1]: nesting lip; PCB rests on the lip top at z = 2.1
-- Per-switch hot-swap socket pockets (16 × 7 × 1 mm) cut into the lip top
+- Per-switch hot-swap socket pockets cut into the lip — traced from the Kailh PG1350 socket silkscreen (plastic body **plus** both SMD pad rectangles), inflated by `socket_clr` = 0.6 mm
+- Choc plastic-pin, power-switch-leg, and XIAO underside-joint clearance pockets in the lip
 - M2 hex nut pockets (4.0 mm AF × 1.8 mm) at the four bolt positions
+- Four Ø8.4 × 1.8 mm bumpon pockets in the underside (≥7.5 mm clear of the nut pockets)
 
 ### Mounting hardware
 
