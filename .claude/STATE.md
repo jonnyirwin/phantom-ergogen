@@ -9,6 +9,22 @@ _Last updated: 2026-06-26_
 - Regenerated ergogen output (`pcb/output/pcbs/eidolon_{left,right}.kicad_pcb`) has correct nets.
 - Saved 2 memories: `pcb-routing-aesthetic`, `routing-faithfulness-standard`.
 
+## In flight (updated 2026-06-27, session 3 — per-half pin maps)
+- **Per-half pin assignment to declutter the right** (user-driven). Each half is an independent
+  wireless unit, so the net→pin maps need not match. Right half now has its OWN `params` in
+  `pcb/eidolon.yaml` (not the shared `&mcu_params`): all 4 rows on the matrix-facing edge
+  (D7:R3 D8:R2 D9:R1 D10:R0, nested), columns on D0–D4. Left keeps R0/R1 on D5/D6.
+- **Why:** with a cloned MCU each pin faces the matrix on one half / away on the other, so every
+  matrix net crosses the MCU on exactly one half (total invariant = 9). Right's matrix-facing edge
+  has only 4 GPIO → floor of 5 crossings there. Independent maps let the right hit that floor (only
+  the 5 columns cross) while the left stays at 2 — R0/R1's old "west-about" boxed routes are gone.
+- **Router:** `route_boxed_rows` partitions boxed-vs-near by matrix proximity (returns [] when all
+  rows are matrix-facing); `route_near_rows` e<0 fans all 4 right rows nested into their diodes
+  (south-side pad-2 entry; one B.Cu hop for R0's long top-row traverse over the home-row link).
+- **FIRMWARE: the two halves now need DIFFERENT `MATRIX_ROW_PINS`** (left rows D5–D8, right D7–D10).
+- Committed: phantom-router `0505490`; D7↔D8 swap `1fe5a42`/`04269a6` earlier. Both halves 0 DRC / 0
+  unconnected. Boards re-landed into `pcb/` + gerbers re-exported.
+
 ## In flight (updated 2026-06-27, session 2)
 - **BOTH HALVES ROUTED: 0 DRC violations, 0 unconnected, faithful.** Committed in
   `~/git/phantom-router` (now a git repo): `1fe5a42` (re-route + left done + right to 2),

@@ -304,8 +304,10 @@ pcbs:
           D4: C4
           D5: R0
           D6: R1
-          D7: R2
-          D8: R3
+          D7: R3   # thumb row on the SOUTHmost right-column pad -> heads straight
+          D8: R2   # down to the thumb; R2 (mid-board) sits just north of it, so the
+                   # two fan out nested instead of crossing. (was D7:R2 / D8:R3;
+                   # firmware MATRIX_ROW_PINS must swap D7<->D8 to match.)
           BAT: BATT
       battery:
         what: battery
@@ -373,7 +375,24 @@ pcbs:
         what: xiao_ble
         where: *mcu_where
         asym: clone
-        params: *mcu_params
+        # Right half gets its OWN pin map (each half is an independent wireless
+        # unit with its own firmware -- the maps need not match). On the right the
+        # matrix faces the D7-D10 edge, so put ALL FOUR ROWS there (nested N->S:
+        # R0,R1,R2,R3 -> pads D10,D9,D8,D7, matching their spine order) and leave
+        # the columns on D0-D4. That keeps every row's fan-out direct; only the 5
+        # columns cross the MCU (the physical floor: 4 GPIO face the matrix here).
+        # D5/D6 spare. Firmware MATRIX_ROW_PINS differs from the left accordingly.
+        params:
+          D0: C0
+          D1: C1
+          D2: C2
+          D3: C3
+          D4: C4
+          D7: R3
+          D8: R2
+          D9: R1
+          D10: R0
+          BAT: BATT
       battery:
         what: battery
         where: *battery_where
