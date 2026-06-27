@@ -9,7 +9,16 @@ _Last updated: 2026-06-26_
 - Regenerated ergogen output (`pcb/output/pcbs/eidolon_{left,right}.kicad_pcb`) has correct nets.
 - Saved 2 memories: `pcb-routing-aesthetic`, `routing-faithfulness-standard`.
 
-## In flight (updated 2026-06-26, session 2)
+## In flight (updated 2026-06-27, session 2)
+- **BOTH HALVES ROUTED: 0 DRC violations, 0 unconnected, faithful.** Committed in
+  `~/git/phantom-router` (now a git repo): `1fe5a42` (re-route + left done + right to 2),
+  `04269a6` (right access-pad jumper through the neck → right to 0). `routed_{left,right}.kicad_pcb`
+  are the clean boards.
+- **FAB-PREP DONE:** landed `routed_{left,right}.kicad_pcb` → `pcb/eidolon_{left,right}.kicad_pcb`
+  (final DRC 0/0 in place), re-exported `pcb/eidolon_{left,right}_gerbers.zip` (all layers +
+  Excellon drill via kicad-cli). Both committed to eidolon. **Fab-ready.**
+
+### How each half was resolved (faithful, minimal vias)
 - **LEFT half: DONE — 0 DRC, 0 unconnected, faithful.** Reverted keepout to whole-module
   (`extract.add_gnd_pours`); restored explicit B.Cu margin GND rail (battery→south-margin→rise
   INBOARD of east column at `outer.x-2.6` to clear the 2.75mm-wide pads→jog into pad13→F.Cu jumper
